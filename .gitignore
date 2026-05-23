@@ -1,0 +1,24 @@
+# Compiled binaries
+/hello_world
+/localharness
+examples/hello_world/hello_world
+*.exe
+*.out
+
+# Build output
+/dist/
+/bin/
+
+# Go temp files
+*.test
+*.prof
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
