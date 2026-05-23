@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // This file is part of antigravity-sdk-go, a Go port of the Google Antigravity
-// Python SDK (https://github.com/google/antigravity-sdk-python), which is
+// Python SDK (https://github.com/google-antigravity/antigravity-sdk-python), which is
 // licensed under the Apache License 2.0. This port is an independent community
 // contribution and is NOT affiliated with or endorsed by Google LLC.
 //

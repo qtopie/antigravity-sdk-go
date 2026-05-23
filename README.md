@@ -1,12 +1,12 @@
 # antigravity-sdk-go
 
-A **community Go port** of the [Google Antigravity Python SDK](https://github.com/google/antigravity-sdk-python).
+A **community Go port** of the [Google Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python).
 
 > ⚠️ **Disclaimer**: This project is an **independent, community-developed** Go implementation. It is **NOT** an official Google product and is **not affiliated with or endorsed by Google LLC** in any way. The official SDK is Python-only; this Go port was written independently by [qtopie](https://github.com/qtopie) based on the Python source.
 
 ## About
 
-The [Google Antigravity Python SDK](https://github.com/google/antigravity-sdk-python) is an open-source SDK (Apache-2.0) for building AI agents powered by the Gemini model. This repository provides a Go-language port of that SDK, enabling Go developers to build agents with the same agentic loop infrastructure.
+The [Google Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python) is an open-source SDK (Apache-2.0) for building AI agents powered by the Gemini model. This repository provides a Go-language port of that SDK, enabling Go developers to build agents with the same agentic loop infrastructure.
 
 ### What's ported
 
@@ -26,7 +26,7 @@ The [Google Antigravity Python SDK](https://github.com/google/antigravity-sdk-py
 
 - Go 1.25+
 - A valid Gemini API key ([Get one here](https://aistudio.google.com/apikey))
-- The `localharness` binary from the [Antigravity Python SDK](https://github.com/google/antigravity-sdk-python)
+- The `localharness` binary from the [Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python)
 
 ## Installation
 
@@ -145,17 +145,6 @@ Expected output:
 2026/05/23 19:39:24 [Harness Stderr] Received StepUpdate: text:"Hello!" state:STATE_DONE
 ```
 
----
-
-## Known Issues Fixed vs. the Original Skeleton
-
-This port includes the following bug fixes over the initial skeleton code:
-
-1. **Proto JSON serialization** — The original skeleton used `encoding/json` to serialize proto messages, which produces incorrect field names. This port uses `protojson.Marshal` / `protojson.Unmarshal` for correct camelCase protobuf-JSON encoding, matching what the Python SDK sends via `json_format.MessageToJson()`.
-
-2. **WebSocket proxy support** — The original skeleton used `websocket.DefaultDialer` which ignores proxy environment variables. This port configures the dialer with `http.ProxyFromEnvironment` so that `HTTPS_PROXY` / `ALL_PROXY` env vars are respected for outbound `wss://` connections.
-
----
 
 ## License & Attribution
 
@@ -163,7 +152,7 @@ This project is licensed under the **Apache License 2.0** — the same license a
 
 - **This Go port**: Copyright 2026 qtopie, Apache-2.0
 - **Original Python SDK**: Copyright 2026 Google LLC, Apache-2.0  
-  Source: https://github.com/google/antigravity-sdk-python
+  Source: https://github.com/google-antigravity/antigravity-sdk-python
 
 In accordance with the Apache 2.0 license:
 - The original `LICENSE` file is included in this repository.
@@ -176,5 +165,5 @@ Contributions are welcome! Please open an issue or pull request on [GitHub](http
 
 ## Acknowledgements
 
-- [Google Antigravity Python SDK](https://github.com/google/antigravity-sdk-python) — the original work this port is based on.
+- [Google Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python) — the original work this port is based on.
 - Google LLC — authors of the original Apache-2.0 licensed Python SDK.
