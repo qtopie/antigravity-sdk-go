@@ -1,21 +1,15 @@
 // Copyright 2026 qtopie
 // SPDX-License-Identifier: Apache-2.0
-//
-// This file is part of antigravity-sdk-go, a Go port of the Google Antigravity
-// Python SDK (https://github.com/google-antigravity/antigravity-sdk-python), which is
-// licensed under the Apache License 2.0. This port is an independent community
-// contribution and is NOT affiliated with or endorsed by Google LLC.
-//
-// Original Python SDK: Copyright 2026 Google LLC, Apache-2.0 License.
+
 package antigravity
 
 import (
 	"bufio"
 	"context"
+	"embed"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -23,13 +17,16 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/qtopie/antigravity-sdk-go/proto"
 	"github.com/gorilla/websocket"
-	googleproto "google.golang.org/protobuf/proto"
+	"github.com/qtopie/antigravity-sdk-go/proto"
 	"google.golang.org/protobuf/encoding/protojson"
+	googleproto "google.golang.org/protobuf/proto"
 )
 
-// LocalConnectionStrategy implements the connection strategy for the local harness.
+//go:generate go run download.go
+//go:embed bin/localharness
+var embeddedHarness embed.FS
+
 type LocalConnectionStrategy struct {
 	binaryPath         string
 	toolRunner         *ToolRunner
@@ -45,12 +42,22 @@ type LocalConnectionStrategy struct {
 func NewLocalConnectionStrategy(config AgentConfig) *LocalConnectionStrategy {
 	binaryPath := os.Getenv("ANTIGRAVITY_HARNESS_PATH")
 	if binaryPath == "" {
-		binaryPath = "localharness" // Fallback to PATH
+		tempDir := filepath.Join(os.TempDir(), "antigravity_bin")
+		os.MkdirAll(tempDir, 0755)
+		binaryPath = filepath.Join(tempDir, "localharness")
+		if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+			data, err := embeddedHarness.ReadFile("bin/localharness")
+			if err == nil {
+				os.WriteFile(binaryPath, data, 0755)
+			} else {
+				binaryPath = "localharness"
+			}
+		}
 	}
 
 	return &LocalConnectionStrategy{
 		binaryPath:         binaryPath,
-		geminiConfig:       GeminiConfig{}, // In a real app, populate from config
+		geminiConfig:       GeminiConfig{},
 		systemInstructions: config.SystemInstructions,
 		capabilities:       config.Capabilities,
 		workspaces:         []string{"."},
@@ -77,16 +84,14 @@ func (s *LocalConnectionStrategy) Connect(ctx context.Context) (Connection, erro
 		return nil, fmt.Errorf("failed to start localharness: %w", err)
 	}
 
-	// 1. Handshake over Stdio
 	inputConfig := &proto.InputConfig{
 		StorageDirectory: s.saveDir,
 	}
 	data, _ := googleproto.Marshal(inputConfig)
-	
+
 	binary.Write(stdin, binary.LittleEndian, uint32(len(data)))
 	stdin.Write(data)
 
-	// Read OutputConfig
 	var length uint32
 	if err := binary.Read(stdout, binary.LittleEndian, &length); err != nil {
 		return nil, fmt.Errorf("failed to read handshake length: %w", err)
@@ -101,13 +106,10 @@ func (s *LocalConnectionStrategy) Connect(ctx context.Context) (Connection, erro
 		return nil, fmt.Errorf("failed to parse output config: %w", err)
 	}
 
-	// 2. Connect via WebSocket (local, no proxy needed)
 	wsURL := fmt.Sprintf("ws://localhost:%d/", outputConfig.Port)
 	header := http.Header{}
 	header.Add("x-goog-api-key", outputConfig.ApiKey)
 
-	// Use a dialer that respects HTTPS_PROXY/ALL_PROXY env vars for outbound
-	// connections but not for localhost (the harness WS is local).
 	dialer := &websocket.Dialer{
 		NetDial: func(network, addr string) (net.Conn, error) {
 			return net.Dial(network, addr)
@@ -119,22 +121,27 @@ func (s *LocalConnectionStrategy) Connect(ctx context.Context) (Connection, erro
 		return nil, fmt.Errorf("failed to connect to websocket: %w", err)
 	}
 
-	// 3. Initialize Conversation
 	harnessConfig := &proto.HarnessConfig{
 		GeminiConfig: &proto.GeminiConfig{
 			ApiKey:    os.Getenv("GEMINI_API_KEY"),
-			ModelName: "gemini-2.5-flash",
+			ModelName: "gemini-3.5-flash",
 		},
 	}
+
+	if s.systemInstructions != nil {
+		if si, ok := s.systemInstructions.(string); ok && si != "" {
+			harnessConfig.SystemInstructions = &proto.SystemInstructions{
+				Custom: &proto.CustomSystemInstructions{
+					Part: []*proto.CustomSystemInstructions_Part{{Text: si}},
+				},
+			}
+		}
+	}
+
 	initEvent := &proto.InitializeConversationEvent{
 		Config: harnessConfig,
 	}
-	log.Printf("Initializing conversation with model: %s", harnessConfig.GeminiConfig.ModelName)
-	// Use protojson to correctly serialize proto message with camelCase field names
-	initJSON, err := protojson.Marshal(initEvent)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal init event: %w", err)
-	}
+	initJSON, _ := protojson.Marshal(initEvent)
 	if err := ws.WriteMessage(websocket.TextMessage, initJSON); err != nil {
 		return nil, fmt.Errorf("failed to send init event: %w", err)
 	}
@@ -146,8 +153,6 @@ func (s *LocalConnectionStrategy) Connect(ctx context.Context) (Connection, erro
 		steps:  make(chan Step, 100),
 	}
 
-
-	// Start background readers
 	go conn.readLoop()
 	go conn.stderrLoop()
 
@@ -158,7 +163,6 @@ func (s *LocalConnectionStrategy) Close(ctx context.Context) error {
 	return nil
 }
 
-// LocalConnection implements the Connection interface for the local harness.
 type LocalConnection struct {
 	cmd    *exec.Cmd
 	ws     *websocket.Conn
@@ -170,17 +174,11 @@ type LocalConnection struct {
 
 func (c *LocalConnection) Send(ctx context.Context, prompt ContentPrimitive, options map[string]any) error {
 	var inputEvent proto.InputEvent
-
 	switch p := prompt.(type) {
 	case TextContent:
 		inputEvent.UserInput = string(p)
 	}
-
-	log.Printf("Sending InputEvent: user_input=%q", inputEvent.UserInput)
-	data, err := protojson.Marshal(&inputEvent)
-	if err != nil {
-		return fmt.Errorf("failed to marshal InputEvent: %w", err)
-	}
+	data, _ := protojson.Marshal(&inputEvent)
 	return c.ws.WriteMessage(websocket.TextMessage, data)
 }
 
@@ -188,13 +186,8 @@ func (c *LocalConnection) ReceiveSteps(ctx context.Context) (<-chan Step, error)
 	return c.steps, nil
 }
 
-func (c *LocalConnection) IsIdle() bool {
-	return true // Simplified
-}
-
-func (c *LocalConnection) WaitForIdle(ctx context.Context) error {
-	return nil
-}
+func (c *LocalConnection) IsIdle() bool                          { return true }
+func (c *LocalConnection) WaitForIdle(ctx context.Context) error { return nil }
 
 func (c *LocalConnection) Close(ctx context.Context) error {
 	c.mu.Lock()
@@ -204,7 +197,10 @@ func (c *LocalConnection) Close(ctx context.Context) error {
 	}
 	c.closed = true
 	c.ws.Close()
-	return c.cmd.Process.Kill()
+	if c.cmd != nil && c.cmd.Process != nil {
+		return c.cmd.Process.Kill()
+	}
+	return nil
 }
 
 func (c *LocalConnection) readLoop() {
@@ -212,7 +208,6 @@ func (c *LocalConnection) readLoop() {
 	for {
 		messageType, message, err := c.ws.ReadMessage()
 		if err != nil {
-			log.Printf("WS read error: %v", err)
 			return
 		}
 		if messageType != websocket.TextMessage {
@@ -221,12 +216,10 @@ func (c *LocalConnection) readLoop() {
 
 		var event proto.OutputEvent
 		if err := protojson.Unmarshal(message, &event); err != nil {
-			log.Printf("Failed to unmarshal OutputEvent: %v. Data: %s", err, string(message))
 			continue
 		}
 
 		if event.StepUpdate != nil {
-			log.Printf("Received StepUpdate: Text=%q, State=%v", event.StepUpdate.Text, event.StepUpdate.State)
 			step := mapProtoStepToSDK(event.StepUpdate)
 			c.steps <- step
 		}
@@ -258,19 +251,34 @@ func mapProtoStepToSDK(pb *proto.StepUpdate) Step {
 	case proto.StepUpdate_TARGET_USER:
 		s.Target = StepTargetUser
 	case proto.StepUpdate_TARGET_MODEL:
-		s.Target = StepTargetEnvironment // Note: target mapping might vary
+		s.Target = StepTargetEnvironment
 	case proto.StepUpdate_TARGET_ENVIRONMENT:
 		s.Target = StepTargetEnvironment
 	default:
 		s.Target = StepTargetUnknown
 	}
 
+	switch pb.State {
+	case proto.StepUpdate_STATE_ACTIVE:
+		s.Status = StepStatusActive
+	case proto.StepUpdate_STATE_DONE:
+		s.Status = StepStatusDone
+		isComp := true
+		s.IsCompleteResponse = &isComp
+	case proto.StepUpdate_STATE_WAITING_FOR_USER:
+		s.Status = StepStatusWaitingForUser
+	case proto.StepUpdate_STATE_ERROR:
+		s.Status = StepStatusError
+	}
 	return s
 }
 
 func (c *LocalConnection) stderrLoop() {
 	scanner := bufio.NewScanner(c.stderr)
 	for scanner.Scan() {
-		log.Printf("[Harness Stderr] %s", scanner.Text())
+		line := scanner.Text()
+		if line != "" {
+			fmt.Printf("[Harness] %s\n", line)
+		}
 	}
 }

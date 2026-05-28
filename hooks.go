@@ -79,16 +79,19 @@ type Hook any
 // Functional hook helpers
 
 type InspectFunc[T any] func(ctx context.Context, hctx *HookContext, data T) error
+
 func (f InspectFunc[T]) Run(ctx context.Context, hctx *HookContext, data T) error {
 	return f(ctx, hctx, data)
 }
 
 type DecideFunc[T any] func(ctx context.Context, hctx *HookContext, data T) (HookResult, error)
+
 func (f DecideFunc[T]) Run(ctx context.Context, hctx *HookContext, data T) (HookResult, error) {
 	return f(ctx, hctx, data)
 }
 
 type TransformFunc[T any, R any] func(ctx context.Context, hctx *HookContext, data T) (R, error)
+
 func (f TransformFunc[T, R]) Run(ctx context.Context, hctx *HookContext, data T) (R, error) {
 	return f(ctx, hctx, data)
 }

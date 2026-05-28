@@ -17,15 +17,15 @@ import (
 type HookRunner struct {
 	SessionContext *HookContext
 
-	OnSessionStartHooks      []OnSessionStartHook
-	OnSessionEndHooks        []OnSessionEndHook
-	PreTurnHooks             []PreTurnHook
-	PostTurnHooks            []PostTurnHook
-	PreToolCallDecideHooks   []PreToolCallDecideHook
-	PostToolCallHooks        []PostToolCallHook
-	OnToolErrorHooks         []OnToolErrorHook
-	OnInteractionHooks       []OnInteractionHook
-	OnCompactionHooks        []OnCompactionHook
+	OnSessionStartHooks    []OnSessionStartHook
+	OnSessionEndHooks      []OnSessionEndHook
+	PreTurnHooks           []PreTurnHook
+	PostTurnHooks          []PostTurnHook
+	PreToolCallDecideHooks []PreToolCallDecideHook
+	PostToolCallHooks      []PostToolCallHook
+	OnToolErrorHooks       []OnToolErrorHook
+	OnInteractionHooks     []OnInteractionHook
+	OnCompactionHooks      []OnCompactionHook
 }
 
 func NewHookRunner() *HookRunner {

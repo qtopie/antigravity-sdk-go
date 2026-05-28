@@ -19,7 +19,7 @@ import (
 // Config types
 
 const (
-	DefaultModel               = "gemini-3.5-flash"
+	DefaultModel                = "gemini-3.5-flash"
 	DefaultImageGenerationModel = "gemini-3.1-flash-image-preview"
 )
 
@@ -84,12 +84,12 @@ const (
 )
 
 type CapabilitiesConfig struct {
-	EnableSubagents       bool          `json:"enable_subagents"`
-	EnabledTools          []BuiltinTool `json:"enabled_tools,omitempty"`
-	DisabledTools         []BuiltinTool `json:"disabled_tools,omitempty"`
-	CompactionThreshold   *int          `json:"compaction_threshold,omitempty"`
-	ImageModel            string        `json:"image_model"`
-	FinishToolSchemaJSON  *string       `json:"finish_tool_schema_json,omitempty"`
+	EnableSubagents      bool          `json:"enable_subagents"`
+	EnabledTools         []BuiltinTool `json:"enabled_tools,omitempty"`
+	DisabledTools        []BuiltinTool `json:"disabled_tools,omitempty"`
+	CompactionThreshold  *int          `json:"compaction_threshold,omitempty"`
+	ImageModel           string        `json:"image_model"`
+	FinishToolSchemaJSON *string       `json:"finish_tool_schema_json,omitempty"`
 }
 
 type McpStdioServer struct {
@@ -117,8 +117,8 @@ type McpServerConfig interface {
 	IsMcpServerConfig()
 }
 
-func (McpStdioServer) IsMcpServerConfig() {}
-func (McpSseServer) IsMcpServerConfig() {}
+func (McpStdioServer) IsMcpServerConfig()          {}
+func (McpSseServer) IsMcpServerConfig()            {}
 func (McpStreamableHttpServer) IsMcpServerConfig() {}
 
 // Tool types
@@ -151,8 +151,8 @@ type UsageMetadata struct {
 type StepType string
 
 const (
-	StepTypeTextResponse StepType = "TEXT_RESPONSE"
-	StepTypeToolCall     StepType = "TOOL_CALL"
+	StepTypeTextResponse  StepType = "TEXT_RESPONSE"
+	StepTypeToolCall      StepType = "TOOL_CALL"
 	StepTypeSystemMessage StepType = "SYSTEM_MESSAGE"
 	StepTypeCompaction    StepType = "COMPACTION"
 	StepTypeFinish        StepType = "FINISH"
@@ -306,7 +306,7 @@ func MediaFromFile(path string, description *string) (ContentPrimitive, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	mimeType := mime.TypeByExtension(filepath.Ext(path))
 	if mimeType == "" {
 		return nil, errors.New("could not infer a valid MIME type for extension")

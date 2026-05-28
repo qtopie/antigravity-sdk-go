@@ -43,14 +43,14 @@ func (r *ToolRunner) Register(name string, tool ToolFunc) error {
 	}
 
 	r.tools[name] = tool
-	
+
 	// Reflection to find ToolContext parameter index
 	v := reflect.ValueOf(tool)
 	t := v.Type()
 	if t.Kind() != reflect.Func {
 		return fmt.Errorf("tool %q is not a function", name)
 	}
-	
+
 	for i := 0; i < t.NumIn(); i++ {
 		paramType := t.In(i)
 		// Check if it's *ToolContext
@@ -82,26 +82,26 @@ func (r *ToolRunner) Execute(ctx context.Context, name string, args map[string]a
 
 	v := reflect.ValueOf(fn)
 	t := v.Type()
-	
+
 	in := make([]reflect.Value, t.NumIn())
 	for i := 0; i < t.NumIn(); i++ {
 		if hasCtx && i == ctxIdx {
 			in[i] = reflect.ValueOf(toolCtx)
 			continue
 		}
-		
+
 		// Map args from map[string]any to parameters
 		// This is a simplified implementation. Real implementation would use JSON tags or parameter names.
 		// For now, let's assume arguments are passed in order if not named, or use a map.
 		// In a real Go SDK, tools often take a single "Args" struct.
 	}
-	
+
 	results := v.Call(in)
-	
+
 	if len(results) == 0 {
 		return nil, nil
 	}
-	
+
 	// Handle (any, error) return pattern
 	if len(results) == 2 {
 		errVal := results[1].Interface()
@@ -110,7 +110,7 @@ func (r *ToolRunner) Execute(ctx context.Context, name string, args map[string]a
 		}
 		return results[0].Interface(), nil
 	}
-	
+
 	return results[0].Interface(), nil
 }
 

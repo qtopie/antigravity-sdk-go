@@ -167,3 +167,15 @@ Contributions are welcome! Please open an issue or pull request on [GitHub](http
 
 - [Google Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python) — the original work this port is based on.
 - Google LLC — authors of the original Apache-2.0 licensed Python SDK.
+
+### Dynamic localharness Download (Cross-Compilation)
+
+This SDK embeds the Google Antigravity `localharness` binary. Because this binary is platform-specific, if you are cloning the repo or cross-compiling, you can dynamically fetch the correct engine binary from PyPI using `go generate`.
+
+```bash
+# Download for current OS/Arch
+go generate ./...
+
+# Download for cross-compiling (e.g. to linux/arm64)
+GOOS=linux GOARCH=arm64 go generate ./...
+```
