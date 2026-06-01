@@ -3,6 +3,8 @@
 A **community Go port** of the [Google Antigravity Python SDK](https://github.com/google-antigravity/antigravity-sdk-python).
 
 > ⚠️ **Disclaimer**: This project is an **independent, community-developed** Go implementation. It is **NOT** an official Google product and is **not affiliated with or endorsed by Google LLC** in any way. The official SDK is Python-only; this Go port was written independently by [qtopie](https://github.com/qtopie) based on the Python source.
+ 
+Note that currently localharness is not supported in MacOS amd64
 
 ## About
 
